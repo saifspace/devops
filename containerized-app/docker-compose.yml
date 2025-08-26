@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  blog-api:
+    build: .
+    container_name: blog-api-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_PATH=/app/data/blog.db
+      - ENVIRONMENT=development
+    volumes:
+      # Mount local data directory to persist database
+      - ./data:/app/data
+      # For development hot reload, mount only the source files (not the entire app directory)
+      - ./app/main.py:/app/main.py:ro
+      - ./app/requirements.txt:/app/requirements.txt:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a reverse proxy for production-like setup
+  nginx:
+    image: nginx:alpine
+    container_name: blog-nginx-dev
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - blog-api
+    restart: unless-stopped
+    profiles:
+      - with-nginx
+
+# Create a network for the services
+networks:
+  default:
+    name: blog-network
